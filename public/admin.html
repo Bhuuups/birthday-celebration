@@ -1,0 +1,32 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Admin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Hind:wght@400;500;600&display=swap"><link rel="stylesheet" href="style.css"></head>
+<body><main style="padding-bottom:40px">
+<h1>Admin 🎂</h1>
+<section id="lg"><label for="pw">Password</label><input id="pw" type="password"><p><button id="in">Login</button> <span id="le" class="over"></span></p></section>
+<div id="ad" hidden>
+<section><h2>Naya option jodo</h2>
+<div class="row"><div class="grow"><label for="c">Category</label><select id="c"></select></div><div class="grow"><label for="n">Naam</label><input id="n"></div></div>
+<div class="row"><div class="grow"><label for="p">Price (₹)</label><input id="p" type="number" min="0"></div><div class="grow"><label for="u">Price kaise lagegi</label><select id="u"><option value="fixed">Poore event ki (fixed)</option><option value="guest">Per mehmaan</option></select></div></div>
+<label for="d">Chhota description</label><input id="d"><label for="im">Photo</label><input id="im" type="file" accept="image/*">
+<p><button id="add">Option save karo</button> <span id="ae" class="over"></span></p></section>
+<section><h2>Options</h2><div id="its"></div></section>
+<section><h2>Parents ki requests</h2><div id="rq"></div></section></div>
+</main>
+<script>
+var CATS=["Birthday card","Venue","Cake","Khaana","Return gifts","Decoration","Entertainment","Photography"];
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function fmt(n){return "₹"+Math.round(n).toLocaleString("en-IN")}
+function J(u,o){return fetch(u,o).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"error");return j})})}
+$("c").innerHTML=CATS.map(function(c){return "<option>"+c+"</option>"}).join("");
+function show(){$("lg").hidden=true;$("ad").hidden=false;load()}
+function load(){
+J("/api/items").then(function(d){$("its").innerHTML=d.length?d.map(function(i){return "<div class='rq row'>"+(i.img?"<img alt='' src='"+esc(i.img)+"' width='64' height='64' style='object-fit:cover;border-radius:8px'>":"")+"<div class='grow'><b>"+esc(i.name)+"</b><div class='meta'>"+esc(i.cat)+" · "+fmt(i.price)+(i.unit==="guest"?" / mehmaan":"")+"</div></div><button class='bad' data-del='"+i.id+"'>Hatao</button></div>"}).join(""):"<p class='meta'>Abhi koi option nahi.</p>"});
+J("/api/requests").then(function(d){$("rq").innerHTML=d.length?d.map(function(r){return "<div class='rq'><b>"+esc(r.student||"-")+"</b> · "+esc(r.parent)+" · <a href='https://wa.me/"+(r.phone.length===10?"91":"")+esc(r.phone)+"' target='_blank' rel='noopener'>WhatsApp</a><div class='meta'>"+esc(r.date||"tareekh nahi")+" · "+r.guests+" mehmaan · budget "+fmt(r.budget)+" · total "+fmt(r.total)+"</div><div>"+r.items.map(function(i){return esc(i.cat+": "+i.name)}).join(", ")+"</div>"+(r.notes?"<div class='meta'>"+esc(r.notes)+"</div>":"")+"<select data-st='"+r.id+"'>"+["new","contacted","confirmed","done"].map(function(s){return "<option"+(s===r.status?" selected":"")+">"+s+"</option>"}).join("")+"</select></div>"}).join(""):"<p class='meta'>Abhi koi request nahi.</p>"})}
+$("in").onclick=function(){J("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:$("pw").value})}).then(show).catch(function(e){$("le").textContent=e.message})};
+$("add").onclick=function(){var f=new FormData();f.append("cat",$("c").value);f.append("name",$("n").value);f.append("price",$("p").value);f.append("unit",$("u").value);f.append("desc",$("d").value);if($("im").files[0])f.append("image",$("im").files[0]);
+$("ae").textContent="";J("/api/items",{method:"POST",body:f}).then(function(){$("n").value=$("p").value=$("d").value=$("im").value="";load()}).catch(function(e){$("ae").textContent=e.message})};
+document.addEventListener("click",function(e){var b=e.target.closest("[data-del]");if(b&&confirm("Hata dein?"))J("/api/items/"+b.dataset.del,{method:"DELETE"}).then(load)});
+document.addEventListener("change",function(e){var s=e.target.closest("[data-st]");if(s)J("/api/requests/"+s.dataset.st,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:s.value})})});
+J("/api/me").then(show).catch(function(){});
+</script></body></html>
